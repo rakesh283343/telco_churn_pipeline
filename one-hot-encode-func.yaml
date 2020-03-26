@@ -1,0 +1,59 @@
+name: One hot encode
+inputs:
+- name: input_df
+  type: String
+outputs:
+- name: Output
+  type: String
+implementation:
+  container:
+    image: tensorflow/tensorflow:1.13.2-py3
+    command:
+    - sh
+    - -c
+    - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'numpy' 'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+      --no-warn-script-location 'numpy' 'pandas' --user) && "$0" "$@"
+    - python3
+    - -u
+    - -c
+    - "def one_hot_encode(input_df )  : \n\n    ## Import Required Libraries\n   \
+      \ import pandas as pd\n    import numpy as np\n\n    lines = input_df.splitlines()\n\
+      \    l_df = []\n    for l in lines:\n        l_df.append(l.split())\n\n    cols\
+      \ = l_df[0]\n    l_df = l_df[1:]\n    df_churn = pd.DataFrame(l_df, columns=cols)\
+      \ \n\n    empty_cols=['customerID', 'gender', 'SeniorCitizen', 'Partner', 'Dependents',\n\
+      \           'tenure', 'PhoneService', 'MultipleLines', 'InternetService',\n\
+      \           'OnlineSecurity', 'OnlineBackup', 'DeviceProtection','TechSupport',\n\
+      \           'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',\n\
+      \           'PaymentMethod', 'MonthlyCharges', 'TotalCharges', 'Churn']\n\n\
+      \    for i in empty_cols:\n        df_churn[i]=df_churn[i].replace(\" \",np.nan)\n\
+      \n    df_churn.drop(['customerID','cluster_number'], axis=1, inplace=True)\n\
+      \    df_churn = df_churn.dropna()\n    binary_cols = ['Partner','Dependents','PhoneService','PaperlessBilling']\n\
+      \n    for i in binary_cols:\n        df_churn[i] = df_churn[i].replace({\"Yes\"\
+      :1,\"No\":0})\n\n    #Encoding column 'gender'\n    df_churn['gender'] = df_churn['gender'].replace({\"\
+      Male\":1,\"Female\":0})\n\n    category_cols = ['PaymentMethod','MultipleLines','InternetService','OnlineSecurity',\n\
+      \                   'OnlineBackup','DeviceProtection',\n                   'TechSupport','StreamingTV','StreamingMovies','Contract']\n\
+      \n    for cc in category_cols:\n        dummies = pd.get_dummies(df_churn[cc],\
+      \ drop_first=False)\n        dummies = dummies.add_prefix(\"{}#\".format(cc))\n\
+      \        df_churn.drop(cc, axis=1, inplace=True)\n        df_churn = df_churn.join(dummies)\n\
+      \n    df_churn['Churn'] = df_churn['Churn'].replace({\"Yes\":1,\"No\":0})\n\n\
+      \    #saving files may need a PV allocation to container\n    #output of files\
+      \ as Named tuple may cause problems \n\n    df_str = df_churn.to_string(index=False)\n\
+      \    return df_str #to_dict() #to_csv(index=False)\n\ndef _serialize_str(str_value:\
+      \ str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError('Value\
+      \ \"{}\" has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
+      \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='One\
+      \ hot encode', description='')\n_parser.add_argument(\"--input-df\", dest=\"\
+      input_df\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      ----output-paths\", dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args\
+      \ = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"_output_paths\"\
+      , [])\n\n_outputs = one_hot_encode(**_parsed_args)\n\n_outputs = [_outputs]\n\
+      \n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport os\nfor idx, output_file\
+      \ in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
+      \    except OSError:\n        pass\n    with open(output_file, 'w') as f:\n\
+      \        f.write(_output_serializers[idx](_outputs[idx]))\n"
+    args:
+    - --input-df
+    - inputValue: input_df
+    - '----output-paths'
+    - outputPath: Output
