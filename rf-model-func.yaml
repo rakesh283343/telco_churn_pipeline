@@ -50,7 +50,7 @@ implementation:
       \        df_churn.drop(cc, axis=1, inplace=True)\n        df_churn = df_churn.join(dummies)\n\
       \n    df_churn['Churn'] = df_churn['Churn'].replace({\"Yes\":1,\"No\":0})\n\n\
       \    for c in list(set(df_churn.columns) - {'tenure','MonthlyCharges','TotalCharges'}):\n\
-      \        df_churn[c] = df_churn[c].astype('int')\n\n    y1 = df_churn['Churn']\n\
+      \        df_churn[c] = df_churn[c].astype(int)\n\n    y1 = df_churn['Churn']\n\
       \    X1 = df_churn.drop(['Churn'],axis=1)\n\n    X_train, X_test, y_train, y_test\
       \ = train_test_split(X1, y1, random_state=0)\n\n    sm = SMOTE(random_state=0)\n\
       \    X_train_res, y_train_res = sm.fit_sample(X_train, y_train)\n\n    param_grid\
