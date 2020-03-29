@@ -1,11 +1,9 @@
 name: Rf model
 inputs:
-- name: input_df
-  type: JsonObject
+- name: file_name
+  type: String
 - name: n_estimators
   type: Integer
-  default: '100'
-  optional: true
 outputs:
 - name: Cf1
   type: Integer
@@ -22,21 +20,40 @@ implementation:
     - sh
     - -c
     - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'scikit-learn==0.19.1' 'numpy' 'pandas' 'imbalanced-learn==0.6.2' || PIP_DISABLE_PIP_VERSION_CHECK=1
-      python3 -m pip install --quiet --no-warn-script-location 'scikit-learn==0.19.1'
-      'numpy' 'pandas' 'imbalanced-learn==0.6.2' --user) && "$0" "$@"
+      'scikit-learn==0.19.1' 'numpy' 'pandas' 'imbalanced-learn==0.6.2' 'urllib3==1.24.2'
+      || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'scikit-learn==0.19.1' 'numpy' 'pandas' 'imbalanced-learn==0.6.2' 'urllib3==1.24.2'
+      --user) && "$0" "$@"
     - python3
     - -u
     - -c
-    - "def rf_model(input_df , n_estimators  = 100):      \n                     \
-      \                                                                   \n\n   \
-      \ from sklearn.ensemble import RandomForestClassifier\n    from imblearn.over_sampling\
-      \ import SMOTE\n    from sklearn.model_selection import GridSearchCV\n    from\
-      \ sklearn.model_selection import train_test_split\n    from sklearn.metrics\
-      \ import confusion_matrix\n\n    lines = input_df.splitlines()\n    l_df = []\n\
-      \    for l in lines:\n        l_df.append(l.split())\n\n    cols = l_df[0]\n\
-      \    l_df = l_df[1:]\n    df_churn = pd.DataFrame(l_df, columns=cols) \n\n \
-      \   n_estimators = 100\n    n_est = n_estimators\n\n    y1 = df_churn['Churn']\n\
+    - "def rf_model(file_name , n_estimators ):      \n                          \
+      \                                                              \n\n    import\
+      \ pandas as pd\n    import numpy as np\n    from sklearn.ensemble import RandomForestClassifier\n\
+      \    from imblearn.over_sampling import SMOTE\n    from sklearn.model_selection\
+      \ import GridSearchCV\n    from sklearn.model_selection import train_test_split\n\
+      \    from sklearn.metrics import confusion_matrix\n    import string\n    import\
+      \ urllib\n\n    url = \"https://raw.githubusercontent.com/rujual/telco_churn/master/Data.csv\"\
+      \n    file = urllib.request.urlopen(url)\n    l = []\n    for line in file:\n\
+      \        decoded_line = line.decode(\"utf-8\")\n        l.append(decoded_line.split(',')[:-1])\n\
+      \    df_churn = pd.DataFrame(l[1:], columns=l[0])\n    empty_cols=['customerID',\
+      \ 'gender', 'SeniorCitizen', 'Partner', 'Dependents',\n           'tenure',\
+      \ 'PhoneService', 'MultipleLines', 'InternetService',\n           'OnlineSecurity',\
+      \ 'OnlineBackup', 'DeviceProtection','TechSupport',\n           'StreamingTV',\
+      \ 'StreamingMovies', 'Contract', 'PaperlessBilling',\n           'PaymentMethod',\
+      \ 'MonthlyCharges', 'TotalCharges', 'Churn']\n\n    for i in empty_cols:\n \
+      \       df_churn[i]=df_churn[i].replace(\" \",np.nan)\n\n    df_churn.drop(['customerID'],\
+      \ axis=1, inplace=True)\n    df_churn = df_churn.dropna()\n    binary_cols =\
+      \ ['Partner','Dependents','PhoneService','PaperlessBilling']\n\n    for i in\
+      \ binary_cols:\n        df_churn[i] = df_churn[i].replace({\"Yes\":1,\"No\"\
+      :0})\n\n    #Encoding column 'gender'\n    df_churn['gender'] = df_churn['gender'].replace({\"\
+      Male\":1,\"Female\":0})\n\n    category_cols = ['PaymentMethod','MultipleLines','InternetService','OnlineSecurity',\n\
+      \                   'OnlineBackup','DeviceProtection',\n                   'TechSupport','StreamingTV','StreamingMovies','Contract']\n\
+      \n    for cc in category_cols:\n        dummies = pd.get_dummies(df_churn[cc],\
+      \ drop_first=False)\n        dummies = dummies.add_prefix(\"{}#\".format(cc))\n\
+      \        df_churn.drop(cc, axis=1, inplace=True)\n        df_churn = df_churn.join(dummies)\n\
+      \n    df_churn['Churn'] = df_churn['Churn'].replace({\"Yes\":1,\"No\":0})\n\n\
+      \    n_estimators = 100\n    n_est = n_estimators\n\n    y1 = df_churn['Churn']\n\
       \    X1 = df_churn.drop(['Churn'],axis=1)\n\n    X_train, X_test, y_train, y_test\
       \ = train_test_split(X1, y1, random_state=0)\n\n    sm = SMOTE(random_state=0)\n\
       \    X_train_res, y_train_res = sm.fit_sample(X_train, y_train)\n\n    param_grid\
@@ -50,14 +67,14 @@ implementation:
       \    X_test_res, y_test_res = sm.fit_sample(X_test, y_test)\n    y_test_pred\
       \ = rfc_best.predict(X_test_res)\n    rf_score = rfc_best.score(X_test_res,\
       \ y_test_res)\n    conf = confusion_matrix(y_test_res, y_test_pred)\n\n    return\
-      \ (conf[0][0],conf[0][1],conf[1][0],conf[1][1])\n\nimport json\ndef _serialize_int(int_value:\
+      \ (conf[0][0],conf[0][1],conf[1][0],conf[1][1])\n\ndef _serialize_int(int_value:\
       \ int) -> str:\n    if isinstance(int_value, str):\n        return int_value\n\
       \    if not isinstance(int_value, int):\n        raise TypeError('Value \"{}\"\
       \ has type \"{}\" instead of int.'.format(str(int_value), str(type(int_value))))\n\
       \    return str(int_value)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Rf\
-      \ model', description='')\n_parser.add_argument(\"--input-df\", dest=\"input_df\"\
-      , type=json.loads, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
-      --n-estimators\", dest=\"n_estimators\", type=int, required=False, default=argparse.SUPPRESS)\n\
+      \ model', description='')\n_parser.add_argument(\"--file-name\", dest=\"file_name\"\
+      , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      --n-estimators\", dest=\"n_estimators\", type=int, required=True, default=argparse.SUPPRESS)\n\
       _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
       \ nargs=4)\n_parsed_args = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"\
       _output_paths\", [])\n\n_outputs = rf_model(**_parsed_args)\n\n_output_serializers\
@@ -66,14 +83,10 @@ implementation:
       \        os.makedirs(os.path.dirname(output_file))\n    except OSError:\n  \
       \      pass\n    with open(output_file, 'w') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
     args:
-    - --input-df
-    - inputValue: input_df
-    - if:
-        cond:
-          isPresent: n_estimators
-        then:
-        - --n-estimators
-        - inputValue: n_estimators
+    - --file-name
+    - inputValue: file_name
+    - --n-estimators
+    - inputValue: n_estimators
     - '----output-paths'
     - outputPath: Cf1
     - outputPath: Cf2

@@ -19,11 +19,11 @@ implementation:
     - -c
     - "def one_hot_encode(input_df )  : \n\n    ## Import Required Libraries\n   \
       \ import pandas as pd\n    import numpy as np\n\n    lines = input_df.splitlines()\n\
-      \    l_df = []\n    for l in lines:\n        l_df.append(l.split())\n\n    cols\
-      \ = l_df[0]\n    l_df = l_df[1:]\n    df_churn = pd.DataFrame(l_df, columns=cols)\
-      \ \n\n    empty_cols=['customerID', 'gender', 'SeniorCitizen', 'Partner', 'Dependents',\n\
-      \           'tenure', 'PhoneService', 'MultipleLines', 'InternetService',\n\
-      \           'OnlineSecurity', 'OnlineBackup', 'DeviceProtection','TechSupport',\n\
+      \    l_df = []\n    for l in lines:\n        l_df.append(l.split())\n    cols\
+      \ = l_df[0]\n    l_df = l_df[1:]\n    df_churn = pd.DataFrame(l_df).drop(columns=[0])\n\
+      \    df_churn.columns=cols\n\n    empty_cols=['customerID', 'gender', 'SeniorCitizen',\
+      \ 'Partner', 'Dependents',\n           'tenure', 'PhoneService', 'MultipleLines',\
+      \ 'InternetService',\n           'OnlineSecurity', 'OnlineBackup', 'DeviceProtection','TechSupport',\n\
       \           'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',\n\
       \           'PaymentMethod', 'MonthlyCharges', 'TotalCharges', 'Churn']\n\n\
       \    for i in empty_cols:\n        df_churn[i]=df_churn[i].replace(\" \",np.nan)\n\
@@ -38,7 +38,7 @@ implementation:
       \        df_churn.drop(cc, axis=1, inplace=True)\n        df_churn = df_churn.join(dummies)\n\
       \n    df_churn['Churn'] = df_churn['Churn'].replace({\"Yes\":1,\"No\":0})\n\n\
       \    #saving files may need a PV allocation to container\n    #output of files\
-      \ as Named tuple may cause problems \n\n    df_str = df_churn.to_string(index=False)\n\
+      \ as Named tuple may cause problems \n\n    df_str = df_churn.to_string()\n\
       \    return df_str #to_dict() #to_csv(index=False)\n\ndef _serialize_str(str_value:\
       \ str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError('Value\
       \ \"{}\" has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\

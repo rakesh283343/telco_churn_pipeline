@@ -23,7 +23,7 @@ implementation:
       \ from Github Raw Content\n    df_churn = pd.read_csv(file_name)\n    df_churn\
       \ = df_churn.astype(str)\n\n    def remove_spaces(s):\n        return s.replace('\
       \ ','_')\n\n    df_churn = df_churn.applymap(remove_spaces)\n\n    #returning\
-      \ df as to_csv without passing path converts it to string\n    df_str = df_churn.to_string(index=False)\n\
+      \ df as to_csv without passing path converts it to string\n    df_str = df_churn.to_string()\n\
       \    return df_str #to_dict() #to_csv(index=False)\n\ndef _serialize_str(str_value:\
       \ str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError('Value\
       \ \"{}\" has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
