@@ -35,7 +35,7 @@ implementation:
       \    from sklearn.metrics import confusion_matrix\n    import string\n    import\
       \ urllib\n\n    url = \"https://raw.githubusercontent.com/rujual/telco_churn/master/Data.csv\"\
       \n    file = urllib.request.urlopen(url)\n    l = []\n    for line in file:\n\
-      \        decoded_line = line.decode(\"utf-8\")\n        l.append(decoded_line.split(',')[:-1])\n\
+      \        decoded_line = line.decode()\n        l.append(decoded_line.split(',')[:-1])\n\
       \    df_churn = pd.DataFrame(l[1:], columns=l[0])\n    empty_cols=['customerID',\
       \ 'gender', 'SeniorCitizen', 'Partner', 'Dependents',\n           'tenure',\
       \ 'PhoneService', 'MultipleLines', 'InternetService',\n           'OnlineSecurity',\
