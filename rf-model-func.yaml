@@ -20,10 +20,10 @@ implementation:
     - sh
     - -c
     - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'scikit-learn==0.22.2' 'numpy' 'pandas==1.0.3' 'imbalanced-learn==0.6.2' ||
-      PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'scikit-learn==0.22.2' 'numpy' 'pandas==1.0.3' 'imbalanced-learn==0.6.2' --user)
-      && "$0" "$@"
+      'scikit-learn==0.22.2' 'numpy' 'pandas==1.0.3' 'imbalanced-learn==0.6.2' 'xgboost'
+      || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'scikit-learn==0.22.2' 'numpy' 'pandas==1.0.3' 'imbalanced-learn==0.6.2' 'xgboost'
+      --user) && "$0" "$@"
     - python3
     - -u
     - -c
@@ -32,39 +32,47 @@ implementation:
       \ pandas as pd\n    import numpy as np\n    from sklearn.ensemble import RandomForestClassifier\n\
       \    from imblearn.over_sampling import SMOTE\n    from sklearn.model_selection\
       \ import GridSearchCV\n    from sklearn.model_selection import train_test_split\n\
-      \    from sklearn.metrics import confusion_matrix\n\n    df_churn = pd.read_csv(file_name)\n\
-      \    empty_cols=['customerID', 'gender', 'SeniorCitizen', 'Partner', 'Dependents',\n\
-      \           'tenure', 'PhoneService', 'MultipleLines', 'InternetService',\n\
-      \           'OnlineSecurity', 'OnlineBackup', 'DeviceProtection','TechSupport',\n\
-      \           'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',\n\
-      \           'PaymentMethod', 'MonthlyCharges', 'TotalCharges', 'Churn']\n\n\
-      \    for i in empty_cols:\n        df_churn[i]=df_churn[i].replace(\" \",np.nan)\n\
-      \n    df_churn.drop(['customerID'], axis=1, inplace=True)\n    df_churn = df_churn.dropna()\n\
-      \    binary_cols = ['Partner','Dependents','PhoneService','PaperlessBilling']\n\
-      \n    for i in binary_cols:\n        df_churn[i] = df_churn[i].replace({\"Yes\"\
-      :1,\"No\":0})\n\n    #Encoding column 'gender'\n    df_churn['gender'] = df_churn['gender'].replace({\"\
+      \    from sklearn.metrics import confusion_matrix\n    import string\n    import\
+      \ urllib\n\n    url = \"https://raw.githubusercontent.com/rujual/telco_churn/master/Data.csv\"\
+      \n    file = urllib.request.urlopen(url)\n    l = []\n    for line in file:\n\
+      \        decoded_line = line.decode()\n        l.append(decoded_line.split(',')[:-1])\n\
+      \    df_churn = pd.DataFrame(l[1:], columns=l[0])\n    empty_cols=['customerID',\
+      \ 'gender', 'SeniorCitizen', 'Partner', 'Dependents',\n           'tenure',\
+      \ 'PhoneService', 'MultipleLines', 'InternetService',\n           'OnlineSecurity',\
+      \ 'OnlineBackup', 'DeviceProtection','TechSupport',\n           'StreamingTV',\
+      \ 'StreamingMovies', 'Contract', 'PaperlessBilling',\n           'PaymentMethod',\
+      \ 'MonthlyCharges', 'TotalCharges', 'Churn']\n\n    for i in empty_cols:\n \
+      \       df_churn[i]=df_churn[i].replace(\" \",np.nan)\n\n    df_churn.drop(['customerID'],\
+      \ axis=1, inplace=True)\n    df_churn = df_churn.dropna()\n    binary_cols =\
+      \ ['Partner','Dependents','PhoneService','PaperlessBilling']\n\n    for i in\
+      \ binary_cols:\n        df_churn[i] = df_churn[i].replace({\"Yes\":1,\"No\"\
+      :0})\n\n    #Encoding column 'gender'\n    df_churn['gender'] = df_churn['gender'].replace({\"\
       Male\":1,\"Female\":0})\n\n    category_cols = ['PaymentMethod','MultipleLines','InternetService','OnlineSecurity',\n\
       \                   'OnlineBackup','DeviceProtection',\n                   'TechSupport','StreamingTV','StreamingMovies','Contract']\n\
       \n    for cc in category_cols:\n        dummies = pd.get_dummies(df_churn[cc],\
       \ drop_first=False)\n        dummies = dummies.add_prefix(\"{}#\".format(cc))\n\
       \        df_churn.drop(cc, axis=1, inplace=True)\n        df_churn = df_churn.join(dummies)\n\
       \n    df_churn['Churn'] = df_churn['Churn'].replace({\"Yes\":1,\"No\":0})\n\n\
-      \    for c in list(set(df_churn.columns) - {'tenure','MonthlyCharges','TotalCharges'}):\n\
-      \        df_churn[c] = df_churn[c].astype(int)\n\n    y1 = df_churn['Churn']\n\
-      \    X1 = df_churn.drop(['Churn'],axis=1)\n\n    X_train, X_test, y_train, y_test\
-      \ = train_test_split(X1, y1, random_state=0)\n\n    sm = SMOTE(random_state=0)\n\
-      \    X_train_res, y_train_res = sm.fit_sample(X_train, y_train)\n\n    param_grid\
-      \ = {\n        'n_estimators': [50, 100, 200],\n        'max_features': ['auto',\
-      \ 'sqrt', 'log2'],\n        'max_depth' : [2,4,5,6,7,8],\n        'criterion'\
-      \ :['gini', 'entropy']\n    }\n\n    n_est = n_estimators\n\n    rfc_best=RandomForestClassifier(random_state=42,\
-      \ max_features='auto', n_estimators= 50, max_depth=8,\n                    \
-      \                criterion='gini')\n\n    rfc_best.fit(X_train_res, y_train_res)\n\
-      \    X_test_res, y_test_res = sm.fit_sample(X_test, y_test)\n    y_test_pred\
-      \ = rfc_best.predict(X_test_res)\n    rf_score = rfc_best.score(X_test_res,\
-      \ y_test_res)\n    conf = confusion_matrix(y_test_res, y_test_pred)\n\n    return\
-      \ (conf[0][0],conf[0][1],conf[1][0],conf[1][1])\n\ndef _serialize_int(int_value:\
-      \ int) -> str:\n    if isinstance(int_value, str):\n        return int_value\n\
-      \    if not isinstance(int_value, int):\n        raise TypeError('Value \"{}\"\
+      \    df1 = df_churn.loc[:,:'Churn']\n    df1_int = df1[set(df1.columns)-{'tenure','MonthlyCharges','TotalCharges'}]\n\
+      \    df1_float = df1[['tenure','MonthlyCharges','TotalCharges']]\n    df2 =\
+      \ df_churn.loc[:,'PaymentMethod#Bank transfer (automatic)':]\n\n    def get_item(a):\n\
+      \        return int(a)\n\n    def get_fl(a):\n        return float(a)\n\n  \
+      \  df1_int = df1_int.applymap(get_item)\n    df1_float = df1_float.applymap(get_fl)\n\
+      \    df2 = df2.applymap(get_item)\n    df_churn = df1_int.join(df1_float.join(df2))\n\
+      \    df_churn.dropna(inplace=True)\n\n    n_estimators = 100\n    n_est = n_estimators\n\
+      \n    y1 = df_churn['Churn']\n    X1 = df_churn.drop(['Churn'],axis=1)\n\n \
+      \   X_train, X_test, y_train, y_test = train_test_split(X1, y1, random_state=0)\n\
+      \n    sm = SMOTE(random_state=0)\n    X_train_res, y_train_res = sm.fit_sample(X_train,\
+      \ y_train)\n    X_test_res, y_test_res = sm.fit_sample(X_test, y_test)\n\n \
+      \   param_grid = {\n        'n_estimators': [50, 100, 200],\n        'max_features':\
+      \ ['auto', 'sqrt', 'log2'],\n        'max_depth' : [2,4,5,6,7,8],\n        'criterion'\
+      \ :['gini', 'entropy']\n    }\n\n    import xgboost as xgb\n\n    clfxg = xgb.XGBClassifier(objective='binary:logistic',\
+      \ verbosity=0, max_depth=2, eta = 1, silent=0)\n    clfxg.fit(X_train_res, y_train_res)\
+      \ #, num_round, watchlist)\n\n    y_test_pred = clfxg.predict(X_test_res)\n\
+      \    conf = confusion_matrix(y_test_res, y_test_pred)\n\n    return (conf[0][0],\
+      \ conf[0][1], conf[1][0], conf[1][1])\n\ndef _serialize_int(int_value: int)\
+      \ -> str:\n    if isinstance(int_value, str):\n        return int_value\n  \
+      \  if not isinstance(int_value, int):\n        raise TypeError('Value \"{}\"\
       \ has type \"{}\" instead of int.'.format(str(int_value), str(type(int_value))))\n\
       \    return str(int_value)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Rf\
       \ model', description='')\n_parser.add_argument(\"--file-name\", dest=\"file_name\"\
