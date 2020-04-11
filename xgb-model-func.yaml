@@ -1,4 +1,4 @@
-name: Rf model
+name: Xgb model
 inputs:
 - name: df_churn_ip
   type: CSV
@@ -21,9 +21,9 @@ implementation:
     - -c
     - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
       'scikit-learn==0.22.2' 'numpy==1.17.2' 'pandas==1.0.3' 'imbalanced-learn==0.6.2'
-      || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'scikit-learn==0.22.2' 'numpy==1.17.2' 'pandas==1.0.3' 'imbalanced-learn==0.6.2'
-      --user) && "$0" "$@"
+      'xgboost==1.0.2' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+      --no-warn-script-location 'scikit-learn==0.22.2' 'numpy==1.17.2' 'pandas==1.0.3'
+      'imbalanced-learn==0.6.2' 'xgboost==1.0.2' --user) && "$0" "$@"
     - python3
     - -u
     - -c
@@ -35,21 +35,19 @@ implementation:
 
       from typing import NamedTuple
 
-      def rf_model(df_churn_ip: InputPath('CSV'), n_estimators: int) -> NamedTuple('Outputs', [('Cf1', int), ('Cf2', int),
+      def xgb_model(df_churn_ip: InputPath('CSV'), n_estimators: int) -> NamedTuple('Outputs', [('Cf1', int), ('Cf2', int),
                                                                                            ('Cf3', int), ('Cf4', int)]):
 
           import pandas as pd
           import numpy as np
-          import sklearn
           from sklearn.ensemble import RandomForestClassifier
-          #from imblearn.over_sampling import SMOTE
-          #from sklearn.model_selection import GridSearchCV
+          from imblearn.over_sampling import SMOTE
+          from sklearn.model_selection import GridSearchCV
           from sklearn.model_selection import train_test_split
           from sklearn.metrics import confusion_matrix
-          import json
+          import xgboost as xgb
 
           df_churn = pd.read_csv(df_churn_ip)
-          print("op started")
 
           df1 = df_churn.loc[:,:'Churn']
           df1_int = df1[set(df1.columns)-{'tenure','MonthlyCharges','TotalCharges'}]
@@ -68,66 +66,24 @@ implementation:
           df_churn = df1_int.join(df1_float.join(df2))
           df_churn.dropna(inplace=True)
 
-          print("Converting done")
           n_est = n_estimators
-
+          print("op started")
           y1 = df_churn['Churn']
           X1 = df_churn.drop(['Churn'],axis=1)
 
           X_train, X_test, y_train, y_test = train_test_split(X1, y1, random_state=0)
 
-          print(X_train.dtypes)
-          #converting pd datatypes to native python
-          X_int = X_train[set(X_train.columns)-{'tenure','MonthlyCharges','TotalCharges'}]
-          X_float = X_train[['tenure','MonthlyCharges','TotalCharges']]
-          X_int = X_int.applymap(get_item)
-          X_int = X_int.astype('int32')
-          X_float = X_float.applymap(get_fl)
-          X_float = X_float.astype('int32')
-          X_train = X_int.join(X_float)
+          sm = SMOTE(random_state=0)
+          X_train_res, y_train_res = sm.fit_sample(X_train, y_train)
+          X_test_res, y_test_res = sm.fit_sample(X_test, y_test)
 
-          X_int = X_test[set(X_test.columns)-{'tenure','MonthlyCharges','TotalCharges'}]
-          X_float = X_test[['tenure','MonthlyCharges','TotalCharges']]
-          X_int = X_int.applymap(get_item)
-          X_int = X_int.astype('int32')
-          X_float = X_float.applymap(get_fl)
-          X_float = X_float.astype('int32')
-          X_test = X_int.join(X_float)
+          clfxg = xgb.XGBClassifier(objective='binary:logistic', verbosity=0, max_depth=2, eta = 1, silent=0)
+          clfxg.fit(X_train_res, y_train_res) #, num_round, watchlist)
 
-          y_train = y_train.apply(get_item)
-          y_train = y_train.astype('int32')
-          y_test = y_test.apply(get_item)
+          y_test_pred = clfxg.predict(X_test_res)
+          conf = confusion_matrix(y_test_res, y_test_pred)
 
-          print("tt done")
-          print(X_train.dtypes)
-          print(y_train.dtype)
-      #     sm y SMOTE(random_state=0)
-      #     X_train_res, y_train_res = sm.fit_sample(X_train, y_train)
-      #     X_test_res, y_test_res = sm.fit_sample(X_test, y_test)
-
-      #     param_grid = {
-      #         'n_estimators': [50, 100, 200],
-      #         'max_features': ['auto', 'sqrt', 'log2'],
-      #         'max_depth' : [2,4,5,6,7,8],
-      #         'criterion' :['gini', 'entropy']
-      #     }
-
-          n_est = n_estimators
-
-      #     rfc=RandomForestClassifier(random_state=42,n_estimators=n_est)
-      #     gsv_rfc = GridSearchCV(estimator=rfc, param_grid=param_grid, cv= 5)
-      #     rfc.fit(X_train_res, y_train_res)
-
-          rfc_best=RandomForestClassifier(random_state=42, max_features='auto', n_estimators= 50, max_depth=8,
-                                          criterion='gini')
-
-          rfc_best.fit(X_train, y_train) #(X_train_res, y_train_res)
-          #X_test_res, y_test_res = sm.fit_sample(X_test, y_test)
-          y_test_pred = rfc_best.predict(X_test) #_res)
-          rf_score = rfc_best.score(X_test, y_test)  #(X_test_res, y_test_res)
-          conf = confusion_matrix(y_test, y_test_pred)
-
-          return (conf[0][0],conf[0][1],conf[1][0],conf[1][1])
+          return conf[0][0], conf[0][1], conf[1][0], conf[1][1]
 
       def _serialize_int(int_value: int) -> str:
           if isinstance(int_value, str):
@@ -137,14 +93,14 @@ implementation:
           return str(int_value)
 
       import argparse
-      _parser = argparse.ArgumentParser(prog='Rf model', description='')
+      _parser = argparse.ArgumentParser(prog='Xgb model', description='')
       _parser.add_argument("--df-churn-ip", dest="df_churn_ip", type=str, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--n-estimators", dest="n_estimators", type=int, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=4)
       _parsed_args = vars(_parser.parse_args())
       _output_files = _parsed_args.pop("_output_paths", [])
 
-      _outputs = rf_model(**_parsed_args)
+      _outputs = xgb_model(**_parsed_args)
 
       if not hasattr(_outputs, '__getitem__') or isinstance(_outputs, str):
           _outputs = [_outputs]
