@@ -1,17 +1,7 @@
 name: Xgb model
 inputs:
 - name: df_churn_ip
-  type: CSV
 - name: n_estimators
-  type: Integer
-outputs:
-- name: Cf1
-  type: Integer
-- name: Cf2
-  type: Integer
-- name: Cf3
-  type: Integer
-- name: Cf4
   type: Integer
 implementation:
   container:
@@ -33,10 +23,7 @@ implementation:
           def __init__(self, type=None):
               self.type = type
 
-      from typing import NamedTuple
-
-      def xgb_model(df_churn_ip: InputPath('CSV'), n_estimators: int) -> NamedTuple('Outputs', [('Cf1', int), ('Cf2', int),
-                                                                                           ('Cf3', int), ('Cf4', int)]):
+      def xgb_model(df_churn_ip: InputPath(), n_estimators: int):
 
           import pandas as pd
           import numpy as np
@@ -82,21 +69,12 @@ implementation:
 
           y_test_pred = clfxg.predict(X_test_res)
           conf = confusion_matrix(y_test_res, y_test_pred)
-
-          return conf[0][0], conf[0][1], conf[1][0], conf[1][1]
-
-      def _serialize_int(int_value: int) -> str:
-          if isinstance(int_value, str):
-              return int_value
-          if not isinstance(int_value, int):
-              raise TypeError('Value "{}" has type "{}" instead of int.'.format(str(int_value), str(type(int_value))))
-          return str(int_value)
+          print(conf)
 
       import argparse
       _parser = argparse.ArgumentParser(prog='Xgb model', description='')
       _parser.add_argument("--df-churn-ip", dest="df_churn_ip", type=str, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--n-estimators", dest="n_estimators", type=int, required=True, default=argparse.SUPPRESS)
-      _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=4)
       _parsed_args = vars(_parser.parse_args())
       _output_files = _parsed_args.pop("_output_paths", [])
 
@@ -106,10 +84,6 @@ implementation:
           _outputs = [_outputs]
 
       _output_serializers = [
-          _serialize_int,
-          _serialize_int,
-          _serialize_int,
-          _serialize_int,
 
       ]
 
@@ -126,8 +100,3 @@ implementation:
     - inputPath: df_churn_ip
     - --n-estimators
     - inputValue: n_estimators
-    - '----output-paths'
-    - outputPath: Cf1
-    - outputPath: Cf2
-    - outputPath: Cf3
-    - outputPath: Cf4
