@@ -18,11 +18,6 @@ implementation:
     - -u
     - -c
     - |
-      class InputPath:
-          '''When creating component from function, InputPath should be used as function parameter annotation to tell the system to pass the *data file path* to the function instead of passing the actual data.'''
-          def __init__(self, type=None):
-              self.type = type
-
       class OutputPath:
           '''When creating component from function, OutputPath should be used as function parameter annotation to tell the system that the function wants to output data by writing it into a file with the given path instead of returning the data from the function.'''
           def __init__(self, type=None):
@@ -33,13 +28,17 @@ implementation:
           os.makedirs(os.path.dirname(file_path), exist_ok=True)
           return file_path
 
+      class InputPath:
+          '''When creating component from function, InputPath should be used as function parameter annotation to tell the system to pass the *data file path* to the function instead of passing the actual data.'''
+          def __init__(self, type=None):
+              self.type = type
+
       def one_hot_encode(df_churn_ip: InputPath(), df_one_hot: OutputPath()):
 
           import pandas as pd
           import numpy as np
 
           df_churn = pd.read_csv(df_churn_ip)
-          print("op started")
           empty_cols = ['customerID', 'gender', 'SeniorCitizen', 'Partner', 'Dependents',
                  'tenure', 'PhoneService', 'MultipleLines', 'InternetService',
                  'OnlineSecurity', 'OnlineBackup', 'DeviceProtection','TechSupport',
@@ -70,7 +69,6 @@ implementation:
               df_churn = df_churn.join(dummies)
 
           df_churn['Churn'] = df_churn['Churn'].replace({"Yes":1,"No":0})
-          print("Encoding Complete")
 
           df_churn.to_csv(df_one_hot, index=False)
 

@@ -35,26 +35,9 @@ implementation:
           import xgboost as xgb
 
           df_churn = pd.read_csv(df_churn_ip)
-
-          df1 = df_churn.loc[:,:'Churn']
-          df1_int = df1[set(df1.columns)-{'tenure','MonthlyCharges','TotalCharges'}]
-          df1_float = df1[['tenure','MonthlyCharges','TotalCharges']]
-          df2 = df_churn.loc[:,'PaymentMethod#Bank transfer (automatic)':]
-
-          def get_item(a):
-              return int(a)
-
-          def get_fl(a):
-              return float(a)
-
-          df1_int = df1_int.applymap(get_item)
-          df1_float = df1_float.applymap(get_fl)
-          df2 = df2.applymap(get_item)
-          df_churn = df1_int.join(df1_float.join(df2))
           df_churn.dropna(inplace=True)
-
           n_est = n_estimators
-          print("op started")
+
           y1 = df_churn['Churn']
           X1 = df_churn.drop(['Churn'],axis=1)
 
@@ -65,7 +48,7 @@ implementation:
           X_test_res, y_test_res = sm.fit_sample(X_test, y_test)
 
           clfxg = xgb.XGBClassifier(objective='binary:logistic', verbosity=0, max_depth=2, eta = 1, silent=0)
-          clfxg.fit(X_train_res, y_train_res) #, num_round, watchlist)
+          clfxg.fit(X_train_res, y_train_res)
 
           y_test_pred = clfxg.predict(X_test_res)
           conf = confusion_matrix(y_test_res, y_test_pred)

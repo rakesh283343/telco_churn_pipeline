@@ -17,15 +17,15 @@ implementation:
     - python3
     - -u
     - -c
-    - "class OutputPath:\n    '''When creating component from function, OutputPath\
+    - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n   \
+      \ os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+      \nclass OutputPath:\n    '''When creating component from function, OutputPath\
       \ should be used as function parameter annotation to tell the system that the\
       \ function wants to output data by writing it into a file with the given path\
       \ instead of returning the data from the function.'''\n    def __init__(self,\
-      \ type=None):\n        self.type = type\n\ndef _make_parent_dirs_and_return_path(file_path:\
-      \ str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n\
-      \    return file_path\n\ndef read_data(file_name: str, df_churn_op :OutputPath()):\
-      \ \n\n    ## Import Required Libraries\n    import pandas as pd\n    import\
-      \ numpy as np\n\n    df_churn = pd.read_csv(file_name)\n    df_churn.to_csv(df_churn_op,\
+      \ type=None):\n        self.type = type\n\ndef read_data(file_name: str, df_churn_op\
+      \ :OutputPath()): \n\n    ## Import Required Libraries\n    import pandas as\
+      \ pd\n    import numpy as np\n\n    df_churn = pd.read_csv(file_name)\n    df_churn.to_csv(df_churn_op,\
       \ index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Read\
       \ data', description='')\n_parser.add_argument(\"--file-name\", dest=\"file_name\"\
       , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
