@@ -18,12 +18,7 @@ implementation:
     - -u
     - -c
     - |
-      class InputPath:
-          '''When creating component from function, InputPath should be used as function parameter annotation to tell the system to pass the *data file path* to the function instead of passing the actual data.'''
-          def __init__(self, type=None):
-              self.type = type
-
-      def xgb_model(df_churn_ip: InputPath(), n_estimators: int):
+      def xgb_model(df_churn_ip , n_estimators ):
 
           import pandas as pd
           import numpy as np
@@ -62,9 +57,6 @@ implementation:
       _output_files = _parsed_args.pop("_output_paths", [])
 
       _outputs = xgb_model(**_parsed_args)
-
-      if not hasattr(_outputs, '__getitem__') or isinstance(_outputs, str):
-          _outputs = [_outputs]
 
       _output_serializers = [
 

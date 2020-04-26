@@ -1,0 +1,1 @@
+{"outputs": [{"type": "confusion_matrix", "format": "csv", "schema": [{"name": "target", "type": "CATEGORY"}, {"name": "predicted", "type": "CATEGORY"}, {"name": "count", "type": "NUMBER"}], "source": "gs://mlopstest/Conf_mat.csv", "labels": ["0", "1"]}]}

@@ -3,6 +3,10 @@ inputs:
 - name: df_churn_ip
 - name: n_estimators
   type: Integer
+outputs:
+- name: conf_matr
+- name: metadata_out
+- name: metrics_out
 implementation:
   container:
     image: tensorflow/tensorflow:1.13.2-py3
@@ -17,33 +21,63 @@ implementation:
     - python3
     - -u
     - -c
-    - "class InputPath:\n    '''When creating component from function, InputPath should\
-      \ be used as function parameter annotation to tell the system to pass the *data\
-      \ file path* to the function instead of passing the actual data.'''\n    def\
-      \ __init__(self, type=None):\n        self.type = type\n\ndef rf_model(df_churn_ip:\
-      \ InputPath(), n_estimators: int):\n    import pandas as pd\n    import numpy\
-      \ as np\n    import sklearn\n    from sklearn.ensemble import RandomForestClassifier\n\
+    - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n   \
+      \ os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+      \ndef rf_model(df_churn_ip , n_estimators , conf_matr , metadata_out ,\n   \
+      \          metrics_out ):\n    import pandas as pd\n    import numpy as np\n\
+      \    import sklearn\n    from sklearn.ensemble import RandomForestClassifier\n\
       \    from sklearn.model_selection import train_test_split\n    from sklearn.metrics\
-      \ import confusion_matrix\n    import json\n\n    df_churn = pd.read_csv(df_churn_ip)\n\
-      \n    df_churn.dropna(inplace=True)\n    n_est = n_estimators\n\n    y1 = df_churn['Churn']\n\
-      \    X1 = df_churn.drop(['Churn'],axis=1)\n\n    X_train, X_test, y_train, y_test\
-      \ = train_test_split(X1, y1, random_state=0)\n    rfc_best=RandomForestClassifier(random_state=42,\
-      \ max_features='auto', n_estimators= 50, max_depth=8,\n                    \
-      \                criterion='gini')\n\n    rfc_best.fit(X_train, y_train) \n\
-      \    y_test_pred = rfc_best.predict(X_test)\n    rf_score = rfc_best.score(X_test,\
-      \ y_test)\n    conf = confusion_matrix(y_test, y_test_pred)\n\nimport argparse\n\
-      _parser = argparse.ArgumentParser(prog='Rf model', description='')\n_parser.add_argument(\"\
-      --df-churn-ip\", dest=\"df_churn_ip\", type=str, required=True, default=argparse.SUPPRESS)\n\
-      _parser.add_argument(\"--n-estimators\", dest=\"n_estimators\", type=int, required=True,\
-      \ default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n_output_files\
-      \ = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = rf_model(**_parsed_args)\n\
-      \nif not hasattr(_outputs, '__getitem__') or isinstance(_outputs, str):\n  \
-      \  _outputs = [_outputs]\n\n_output_serializers = [\n\n]\n\nimport os\nfor idx,\
-      \ output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
-      \    except OSError:\n        pass\n    with open(output_file, 'w') as f:\n\
-      \        f.write(_output_serializers[idx](_outputs[idx]))\n"
+      \ import confusion_matrix, accuracy_score\n    import json\n    import os\n\n\
+      \    df_churn = pd.read_csv(df_churn_ip)\n\n    df_churn.dropna(inplace=True)\n\
+      \    n_est = n_estimators\n\n    y1 = df_churn['Churn']\n    X1 = df_churn.drop(['Churn'],axis=1)\n\
+      \n    X_train, X_test, y_train, y_test = train_test_split(X1, y1, random_state=0)\n\
+      \    rfc_best=RandomForestClassifier(random_state=42, max_features='auto', n_estimators=\
+      \ 50, max_depth=8,\n                                    criterion='gini')\n\n\
+      \    rfc_best.fit(X_train, y_train) \n    y_test_pred = rfc_best.predict(X_test)\n\
+      \    rf_score = rfc_best.score(X_test, y_test)\n    conf = confusion_matrix(y_test,\
+      \ y_test_pred)\n    print(conf)\n    #conf_mat = pd.DataFrame(conf)\n    #print(conf_mat)\n\
+      \    #np.save(conf_matr, conf)\n    #conf_list = [int(conf[0][0]), int(conf[0][1]),int(conf[1][0]),\
+      \ int(conf[1][1])]\n\n    #code to generate artifacts\n\n    vocab = list(y_test.unique())\n\
+      \    cm = confusion_matrix(y_test, y_test_pred, labels=vocab)\n    data = []\n\
+      \    for target_index, target_row in enumerate(cm):\n        for predicted_index,\
+      \ count in enumerate(target_row):\n            data.append((vocab[target_index],\
+      \ vocab[predicted_index], count))\n\n    df_cm = pd.DataFrame(data, columns=['target',\
+      \ 'predicted', 'count'])\n    print(df_cm)\n    df_cm.to_csv(conf_matr, columns=['target',\
+      \ 'predicted', 'count'], header=False, index=False)\n\n    #df_cm.to_csv(\"\
+      gs://mlopstest/confusionmatrix.csv\", index=False)\n\n    metadata = {\n   \
+      \ 'outputs' : [{\n      'type': 'confusion_matrix',\n      'format': 'csv',\n\
+      \      'schema': [\n        {'name': 'target', 'type': 'CATEGORY'},\n      \
+      \  {'name': 'predicted', 'type': 'CATEGORY'},\n        {'name': 'count', 'type':\
+      \ 'NUMBER'},\n      ],\n      'source': conf_matr,\n      # Convert vocab to\
+      \ string because for bealean values we want \"True|False\" to match csv data.\n\
+      \      'labels': list(map(str, vocab)),\n    }]\n    }\n\n    with open(metadata_out,\
+      \ 'w+') as f1:\n        json.dump(metadata, f1)\n\n    #json.dump(metadata,\
+      \ metadata_out)\n\n    accuracy = accuracy_score(y_test, y_test_pred)\n    metrics\
+      \ = {\n    'metrics': [{\n      'name': 'accuracy-score',\n      'numberValue':\
+      \  accuracy,\n      'format': \"PERCENTAGE\",\n    }]\n    }\n    #with file_io.FileIO('/mlpipeline-metrics.json',\
+      \ 'w') as f:\n    with open(metrics_out, 'w+') as f:\n        json.dump(metrics,\
+      \ f)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Rf model',\
+      \ description='')\n_parser.add_argument(\"--df-churn-ip\", dest=\"df_churn_ip\"\
+      , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      --n-estimators\", dest=\"n_estimators\", type=int, required=True, default=argparse.SUPPRESS)\n\
+      _parser.add_argument(\"--conf-matr\", dest=\"conf_matr\", type=_make_parent_dirs_and_return_path,\
+      \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--metadata-out\"\
+      , dest=\"metadata_out\", type=_make_parent_dirs_and_return_path, required=True,\
+      \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--metrics-out\", dest=\"\
+      metrics_out\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+      _parsed_args = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"\
+      _output_paths\", [])\n\n_outputs = rf_model(**_parsed_args)\n\n_output_serializers\
+      \ = [\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+      \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except OSError:\n\
+      \        pass\n    with open(output_file, 'w') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
     args:
     - --df-churn-ip
     - inputPath: df_churn_ip
     - --n-estimators
     - inputValue: n_estimators
+    - --conf-matr
+    - outputPath: conf_matr
+    - --metadata-out
+    - outputPath: metadata_out
+    - --metrics-out
+    - outputPath: metrics_out

@@ -18,22 +18,12 @@ implementation:
     - -u
     - -c
     - |
-      class OutputPath:
-          '''When creating component from function, OutputPath should be used as function parameter annotation to tell the system that the function wants to output data by writing it into a file with the given path instead of returning the data from the function.'''
-          def __init__(self, type=None):
-              self.type = type
-
       def _make_parent_dirs_and_return_path(file_path: str):
           import os
           os.makedirs(os.path.dirname(file_path), exist_ok=True)
           return file_path
 
-      class InputPath:
-          '''When creating component from function, InputPath should be used as function parameter annotation to tell the system to pass the *data file path* to the function instead of passing the actual data.'''
-          def __init__(self, type=None):
-              self.type = type
-
-      def one_hot_encode(df_churn_ip: InputPath(), df_one_hot: OutputPath()):
+      def one_hot_encode(df_churn_ip , df_one_hot ):
 
           import pandas as pd
           import numpy as np
@@ -80,9 +70,6 @@ implementation:
       _output_files = _parsed_args.pop("_output_paths", [])
 
       _outputs = one_hot_encode(**_parsed_args)
-
-      if not hasattr(_outputs, '__getitem__') or isinstance(_outputs, str):
-          _outputs = [_outputs]
 
       _output_serializers = [
 

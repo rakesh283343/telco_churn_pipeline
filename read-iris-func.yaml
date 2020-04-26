@@ -1,0 +1,54 @@
+name: Read iris
+implementation:
+  container:
+    image: tensorflow/tensorflow:1.13.2-py3
+    command:
+    - sh
+    - -c
+    - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'numpy==1.17.2' 'pandas==1.0.3' 'fs-gcsfs==1.2.0' || PIP_DISABLE_PIP_VERSION_CHECK=1
+      python3 -m pip install --quiet --no-warn-script-location 'numpy==1.17.2' 'pandas==1.0.3'
+      'fs-gcsfs==1.2.0' --user) && "$0" "$@"
+    - python3
+    - -u
+    - -c
+    - |
+      def read_iris():
+
+          import numpy as np
+          import pandas as pd
+          from fs_gcsfs import GCSFS
+          gcsfs = GCSFS(bucket_name="mlopstest")
+
+          #fs = gcsfs.GCSFileSystem(project='mlopsbw', token='google_default')
+          df = pd.read_csv("gs://mlopstest/Iris.csv")
+          print(df.head())
+          df.drop('Species',axis=1, inplace=True)
+          with gcsfs.open("Iris.csv", "w") as gcs_file:
+              #gcs_file.write(local_file.read())
+              df.to_csv("gs://mlopstest/Iris.csv")
+
+          print('to csv done')
+          df = pd.read_csv("gs://mlopstest/Iris.csv")
+          print(df.head())
+
+      import argparse
+      _parser = argparse.ArgumentParser(prog='Read iris', description='')
+      _parsed_args = vars(_parser.parse_args())
+      _output_files = _parsed_args.pop("_output_paths", [])
+
+      _outputs = read_iris(**_parsed_args)
+
+      _output_serializers = [
+
+      ]
+
+      import os
+      for idx, output_file in enumerate(_output_files):
+          try:
+              os.makedirs(os.path.dirname(output_file))
+          except OSError:
+              pass
+          with open(output_file, 'w') as f:
+              f.write(_output_serializers[idx](_outputs[idx]))
+    args: []

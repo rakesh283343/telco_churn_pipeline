@@ -1,0 +1,1 @@
+{"outputs": [{"type": "confusion_matrix", "format": "csv", "schema": [{"name": "target", "type": "CATEGORY"}, {"name": "predicted", "type": "CATEGORY"}, {"name": "count", "type": "NUMBER"}], "source": "conf_matr", "labels": ["0", "1"]}]}
